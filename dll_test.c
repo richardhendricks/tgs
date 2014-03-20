@@ -7,7 +7,16 @@
 // player simulation function
 void *player_f(void *);
 
-//Test function for tictactoe game
+//Test function for games
+
+void create_game(int gamenum, struct gamedata_t *game_d, int gamep[2] ) {
+	
+
+	printf( "Creating new game %d\n", gamenum );
+
+}
+
+//
 //This does minimal bookkeeping for games and players -> each is only used once, ie if a player or game quits the entry isn't reused.
 int main(int argc, char *argv[])
 {
@@ -70,7 +79,7 @@ int main(int argc, char *argv[])
 		switch( simcommand )
 		{
 		case CREATE_GAME:
-			printf( "Creating new game\n" );
+			create_game( 4, &game_data[0], gamepipes[0] );
 			break;
 		case ADD_PLAYER:
 			printf( "Adding new player\n" );
