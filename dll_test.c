@@ -80,9 +80,11 @@ int main(int argc, char *argv[])
 		{
 		case CREATE_GAME:
 			create_game( 4, &game_data[0], gamepipes[0] );
+			num_games++;
 			break;
 		case ADD_PLAYER:
 			printf( "Adding new player\n" );
+			num_players++;
 			break;
 		case KILL_GAME:
 			printf( "Killing game\n" );
@@ -96,7 +98,10 @@ int main(int argc, char *argv[])
 				exit( EXIT_FAILURE );
 			}
 			printf( "Delaying for %d seconds\n", delay );
-			sleep(delay);
+			while(  delay != 0 ) {
+				delay = sleep(delay);
+			}
+
 			exit( EXIT_SUCCESS );
 			}
 			break;

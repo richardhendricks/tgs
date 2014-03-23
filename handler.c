@@ -10,7 +10,7 @@ void handler( int signum )
 	switch( signum ) {
 		case SIGINT:
 			printf( "Currently on line %d of sim file\n", linecount );
-			printf( "There are %d active game(s) and %d active player(s)\n", num_games, num_players );
+			printf( "Processed %d game(s) and %d player(s)\n", num_games, num_players );
 			break;
 		case SIGQUIT:
 			printf( " Terminating \n" );
