@@ -1,6 +1,6 @@
 #include "handler.h"
-//Specific header for dll_test
-
+//Intercept SIGINT and SIGQUIT to display information
+//
 extern int num_games;
 extern int num_players;
 extern int linecount;

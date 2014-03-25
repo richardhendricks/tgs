@@ -1,7 +1,7 @@
 #include "game.h"
 
 
-//Specific header for tictactoe
+//Specific header for game
 
 //Game functions
 void * server_f( void *data )
@@ -10,7 +10,7 @@ void * server_f( void *data )
 	mygamedata = (struct gamedata_t *) data;
 	int retval;
 
-	printf( "Inside the tictactoe thread\n" );
+	printf( "Inside the game thread\n" );
 	printf( "My gamenumber is %d, my input number is %d, my output number is %d, my thread id is %lu\n", mygamedata->gamenumber, mygamedata->input, mygamedata->output, pthread_self() );
 
 	//while( 1 )

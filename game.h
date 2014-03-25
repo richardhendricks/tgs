@@ -31,7 +31,7 @@ struct playerdata_t {
 	pthread_mutex_t mutex;
 };
 
-typedef enum e_server_commands { stop_game=0, add_player, add_watcher, report_status} server_commands_t;
+typedef enum e_server_commands { stop_game=0, add_player, report_status} server_commands_t;
 
 struct command_packet {
 	server_commands_t command;
@@ -47,7 +47,7 @@ struct result_packet {
 	// actual data follows packet header
 };
 
-typedef enum e_player_commands { quit_game = 0, status, move } player_commands_t;
+typedef enum e_player_commands { quit_game = 0, status, join, watch, move } player_commands_t;
 
 struct player_command_packet{
 	player_commands_t command;

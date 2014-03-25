@@ -4,15 +4,52 @@
 
 //Pipes are atomic read/write as long as the amount is smaller than PIPE_BUF, with O_NONBLOCK any writes larger than PIPE_BUF will throw an error on write
 
+pthread_t games[max_test_games];
+pthread_t players[max_test_players];
+
 // player simulation function
 void *player_f(void *);
 
 //Test function for games
 
 void create_game(int gamenum, struct gamedata_t *game_d, int gamep[2] ) {
-	
+	pthread_attr_t attribute;
+	int rc;
+	struct timespec delay;
 
-	printf( "Creating new game %d\n", gamenum );
+	//Setup default attribs for new threads
+	rc = pthread_attr_init( &attribute );
+	if( rc != 0 )
+	{
+		perror ("Error during game thread attribute creation" );
+		exit( EXIT_FAILURE );
+	}
+
+	rc = pthread_attr_setstacksize( &attribute, STACK_SIZE );
+	if( rc != 0 )
+	{
+		perror ("Error during game thread stack size change" );
+		exit( EXIT_FAILURE );
+	}
+
+	game_d->gamenumber = gamenum;
+	if( pipe2( gamep, O_NONBLOCK ) != 0 )
+	{
+		perror ("Error during game pipe creation" );
+		exit( EXIT_FAILURE );
+	}
+
+	game_d->input = gamep[WRITEPIPE];
+	game_d->output = gamep[READPIPE];
+	rc = pthread_create( &games[num_games], &attribute, server_f, game_d );
+	if( rc != 0 )
+	{
+		perror ("Error during game thread creation" );
+		exit( EXIT_FAILURE );
+	}
+	delay.tv_sec = 0;
+	delay.tv_nsec = 10000;
+	//nanosleep(&delay, NULL );
 
 }
 
@@ -22,8 +59,6 @@ int main(int argc, char *argv[])
 {
 	int rc;
 	int i;
-	pthread_t games[max_test_games];
-	pthread_t players[max_test_players];
 	pthread_attr_t attribute;
 	struct gamedata_t game_data[max_test_games];
 	struct playerdata_t player_data[max_test_players];
@@ -39,10 +74,6 @@ int main(int argc, char *argv[])
 	printf( "CTRL-C provides status update, CTRL-\\ terminates\n" );
 
 	setup_signal_handler();
-
-	//Setup default attribs for new threads
-	rc = pthread_attr_init( &attribute );
-	rc = pthread_attr_setstacksize( &attribute, STACK_SIZE );
 
 	//Read in the simulation file
 	if( argc == 2 )
@@ -79,8 +110,17 @@ int main(int argc, char *argv[])
 		switch( simcommand )
 		{
 		case CREATE_GAME:
-			create_game( 4, &game_data[0], gamepipes[0] );
+			{
+			int gamenum; 
+			if ( fscanf( simfile, ":%d", &gamenum ) != 1 )
+			{
+				printf( " Error in simfile CREATE_GAME format\n" );
+				exit( EXIT_FAILURE );
+			}
+
+			create_game( gamenum, &game_data[num_games], gamepipes[num_games] );
 			num_games++;
+			}
 			break;
 		case ADD_PLAYER:
 			printf( "Adding new player\n" );
@@ -119,21 +159,6 @@ int main(int argc, char *argv[])
 	//  - player thread uses separate simulation file
 	//  - watchers are setup by they player thread input file
 	//kill a game with a specific game number
-	game_data[num_games].gamenumber=0;
-	if( pipe2( gamepipes[num_games], O_NONBLOCK ) != 0 )
-	{
-		perror( "Error during game pipe creation" );
-		exit( EXIT_FAILURE );
-	}
-	game_data[num_games].input = gamepipes[num_games][WRITEPIPE];
-	game_data[num_games].output = gamepipes[num_games][READPIPE];
-	rc = pthread_create( &games[num_games], &attribute, server_f, &game_data[num_games] );
-	if( rc != 0 )
-	{
-		perror( "Error during game thread creation" );
-		exit( EXIT_FAILURE );
-	}
-	num_games++;
 
 	player_data[num_players].gamenumber=0;
 	if( pipe2( playerpipes[num_players], O_NONBLOCK ) != 0 )
@@ -144,8 +169,7 @@ int main(int argc, char *argv[])
 	player_data[num_players].input = playerpipes[num_players][WRITEPIPE];
 	player_data[num_players].output = playerpipes[num_players][READPIPE];
 	rc = pthread_create( &players[num_players], &attribute, player_f, &player_data[num_players] );
-	if( rc != 0 )
-	{
+	if( rc != 0 ) {
 		perror( "Error during player thread creation" );
 		exit( EXIT_FAILURE );
 	}

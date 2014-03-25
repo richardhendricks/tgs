@@ -5,9 +5,10 @@
 
 #include <fcntl.h>
 #include <unistd.h>
+#include <time.h>
 
-const int max_test_games = 3;
-const int max_test_players = 10;
+#define max_test_games 3
+#define max_test_players 10
 
 int num_games;
 int num_players;
