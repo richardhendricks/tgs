@@ -9,15 +9,15 @@ void handler( int signum )
 {
 	switch( signum ) {
 		case SIGINT:
-			printf( "Currently on line %d of sim file\n", linecount );
+			printf( "\nCurrently on line %d of sim file\n", linecount );
 			printf( "Processed %d game(s) and %d player(s)\n", num_games, num_players );
 			break;
 		case SIGQUIT:
-			printf( " Terminating \n" );
+			printf( "\nTerminating \n" );
 			exit( EXIT_SUCCESS );
 			break;
 		default:
-			printf( " huh? Unknown signal\n" );
+			printf( "\nhuh? Unknown signal\n" );
 			exit( EXIT_FAILURE );
 			break;
 	}

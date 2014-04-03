@@ -12,10 +12,10 @@ void *player_f(void *);
 
 //Test function for games
 
-void create_game(int gamenum, struct gamedata_t *game_d, int gamep[2] ) {
+void create_game(int gamenum, struct gamedata_t *game_d ) {
 	pthread_attr_t attribute;
+	int gamep[2];
 	int rc;
-	struct timespec delay;
 
 	//Setup default attribs for new threads
 	rc = pthread_attr_init( &attribute );
@@ -41,33 +41,87 @@ void create_game(int gamenum, struct gamedata_t *game_d, int gamep[2] ) {
 
 	game_d->input = gamep[WRITEPIPE];
 	game_d->output = gamep[READPIPE];
-	rc = pthread_create( &games[num_games], &attribute, server_f, game_d );
+	rc = pthread_create( &games[num_games], &attribute, game_f, game_d );
 	if( rc != 0 )
 	{
 		perror ("Error during game thread creation" );
 		exit( EXIT_FAILURE );
 	}
-	delay.tv_sec = 0;
-	delay.tv_nsec = 10000;
-	//nanosleep(&delay, NULL );
-
 }
 
-//
+void create_player(const struct gamedata_t gamedata, struct playerdata_t *player_d, int playerid ) {
+	pthread_attr_t attribute;
+	int playerp[2];
+	int32_t rc;
+	uint8_t commandbuffer[sizeof(struct playerdata_t) + sizeof(struct command_packet) ];
+
+	//Setup default attribs for new threads
+	rc = pthread_attr_init( &attribute );
+	if( rc != 0 )
+	{
+		perror ("Error during player thread attribute creation" );
+		exit( EXIT_FAILURE );
+	}
+
+	rc = pthread_attr_setstacksize( &attribute, STACK_SIZE );
+	if( rc != 0 )
+	{
+		perror ("Error during player thread stack size change" );
+		exit( EXIT_FAILURE );
+	}
+
+	player_d->gamenumber = gamedata.gamenumber;
+	if( pipe2( playerp, O_NONBLOCK ) != 0 )
+	{
+		perror ("Error during player pipe creation" );
+		exit( EXIT_FAILURE );
+	}
+
+	player_d->input = playerp[WRITEPIPE];
+	player_d->output = playerp[READPIPE];
+	player_d->playerid = playerid;
+	rc = pthread_create( &players[num_players], &attribute, player_f, player_d );
+	if( rc != 0 )
+	{
+		perror ("Error during player thread creation" );
+		exit( EXIT_FAILURE );
+	}
+
+	//notify game about new player
+	if ( -1 == write( gamedata.input, commandbuffer, create_add_player_packet( commandbuffer, player_d ) ) )
+	{
+		perror( "Error trying to write to server input pipe to add a new player\n" );
+		exit ( EXIT_FAILURE );
+	}
+
+	//Notfiy player to enter simulation mode
+	//Need to pass in the player sim file location.
+}
+
+int findgame (int gamenum, struct gamedata_t games[], int maxgames )
+{
+	int i;
+	for( i = 0; i < maxgames; i++ ) {
+		if( games[i].gamenumber == gamenum ) {
+			return i;
+		}
+	}
+	perror( "Could not find gamenum in games array\n" );
+	exit( EXIT_FAILURE );
+}
+
 //This does minimal bookkeeping for games and players -> each is only used once, ie if a player or game quits the entry isn't reused.
 int main(int argc, char *argv[])
 {
 	int rc;
 	int i;
-	pthread_attr_t attribute;
 	struct gamedata_t game_data[max_test_games];
 	struct playerdata_t player_data[max_test_players];
-	int gamepipes[max_test_games][2];
-	int playerpipes[max_test_games][2];
 
 	char buffer[BUFFER_SIZE];
 	FILE *simfile;
 	simcommands_t simcommand=-1;
+	int gamenum; 
 	
 
 	printf( "Executing %s test simulation, pthread id is %lu\n", argv[0], pthread_self() );
@@ -110,24 +164,41 @@ int main(int argc, char *argv[])
 		switch( simcommand )
 		{
 		case CREATE_GAME:
-			{
-			int gamenum; 
 			if ( fscanf( simfile, ":%d", &gamenum ) != 1 )
 			{
 				printf( " Error in simfile CREATE_GAME format\n" );
 				exit( EXIT_FAILURE );
 			}
 
-			create_game( gamenum, &game_data[num_games], gamepipes[num_games] );
+			create_game( gamenum, &game_data[num_games] );
 			num_games++;
-			}
 			break;
 		case ADD_PLAYER:
+			if ( fscanf( simfile, ":%d", &gamenum ) != 1 )
+			{
+				printf( " Error in simfile ADD_PLAYER format\n" );
+				exit( EXIT_FAILURE );
+			}
 			printf( "Adding new player\n" );
+			create_player( game_data[findgame( gamenum, game_data, max_test_games )], &player_data[num_players], num_players );
 			num_players++;
 			break;
-		case KILL_GAME:
-			printf( "Killing game\n" );
+		case STOP_GAME:
+			{
+			uint8_t commandbuffer[ BUFFER_SIZE ];
+
+			if ( fscanf( simfile, ":%d", &gamenum ) != 1 ) {
+				printf( " Error in simfile STOP_GAME format\n" );
+				exit( EXIT_FAILURE );
+			}
+			printf( "Stopping game %d\n", gamenum );
+
+			if ( -1 == write( game_data[ findgame( gamenum, game_data, max_test_games ) ].input, commandbuffer, create_stop_game_packet( commandbuffer ) ) ) {
+				perror (" Error writing to game input pipe\n" );
+				exit( EXIT_FAILURE );
+			}
+
+			}
 			break;
 		case WAIT_TIME:
 			{
@@ -141,10 +212,10 @@ int main(int argc, char *argv[])
 			while(  delay != 0 ) {
 				delay = sleep(delay);
 			}
-
-			exit( EXIT_SUCCESS );
 			}
 			break;
+		case QUIT_TEST:
+			goto cleanup;
 		default:
 			printf( " Invalid sim command \n" );
 			exit( EXIT_FAILURE );
@@ -154,27 +225,9 @@ int main(int argc, char *argv[])
 		linecount++;
 		simcommand=-1;
 	}
-	//Create a game with a specific game number
-	//Add a player to a game
-	//  - player thread uses separate simulation file
-	//  - watchers are setup by they player thread input file
-	//kill a game with a specific game number
 
-	player_data[num_players].gamenumber=0;
-	if( pipe2( playerpipes[num_players], O_NONBLOCK ) != 0 )
-	{
-		perror( "Error during player pipe creation" );
-		exit( EXIT_FAILURE );
-	}
-	player_data[num_players].input = playerpipes[num_players][WRITEPIPE];
-	player_data[num_players].output = playerpipes[num_players][READPIPE];
-	rc = pthread_create( &players[num_players], &attribute, player_f, &player_data[num_players] );
-	if( rc != 0 ) {
-		perror( "Error during player thread creation" );
-		exit( EXIT_FAILURE );
-	}
-	num_players++;
-
+cleanup:
+	//Wait for all threads to complete
 	for( i = 0; i < num_games; i++ ) {
 		pthread_join( games[i], (void *)&rc );
 		printf( "Child thread complete, returned %d\n", (int) rc);

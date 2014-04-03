@@ -1,6 +1,6 @@
 HDRS := gameserver.h game.h handler.h dll_test.h
 
-OBJS := game_dl.so libhandler.so.1.0 libhandler.so libhandler.so.1 dll_test.o player.o server
+OBJS := game_dl.so libhandler.so.1.0 libhandler.so libhandler.so.1 dll_test.o player.o packet.o server.out
 
 CFLAGS:= -O2 -std=gnu99 -Wall -pedantic -fPIC
 
@@ -28,14 +28,18 @@ libhandler.so: libhandler.so.1.0 libhandler.so.1
 
 player.o: player.c $(HDRS)
 	gcc $(OBJCFLAGS) -o player.o player.c
-dll_test.o: dll_test.c player.o $(HDRS)
+
+packet.o: packet.c $(HDRS)
+	gcc $(OBJCFLAGS) -o packet.o packet.c
+
+dll_test.o: dll_test.c player.o packet.o $(HDRS)
 	gcc $(OBJCFLAGS) -o dll_test.o dll_test.c
 
 game_dl.so: game.c libhandler.so dll_test.o $(HDRS)
-	gcc -O2 -std=gnu99 -Wall -pedantic -fPIC -shared -pie -pthread -o game_dl.so dll_test.o player.o game.c -L. -lhandler -Wl,-E,-rpath=.
+	gcc -O2 -std=gnu99 -Wall -pedantic -fPIC -shared -pie -pthread -o game_dl.so dll_test.o player.o packet.o game.c -L. -lhandler -Wl,-E,-rpath=.
 
-server: server.c $(HDRS)
-	gcc -O2 -Wall -pedantic -pthread -o server server.c -ldl
+server.out: server.c $(HDRS)
+	gcc -O2 -Wall -pedantic -pthread -o server.out server.c -ldl
 
 clean:
 	rm -f $(OBJS)

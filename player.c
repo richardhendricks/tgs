@@ -6,12 +6,11 @@
 //player functions
 void * player_f( void *data )
 {
-	struct gamedata_t *mygamedata;
-	mygamedata = (struct gamedata_t *) data;
+	struct playerdata_t *myplayerdata;
+	myplayerdata = (struct playerdata_t *) data;
 	int retval;
 
-	printf( "Inside the player thread\n" );
-	printf( "My gamenumber is %d, my input number is %d, my output number is %d, my thread id is %lu\n", mygamedata->gamenumber, mygamedata->input, mygamedata->output, pthread_self() );
+	printf( "NEW PLAYER: gamenumber %d, playerid %d, input %d, output %d, thread id %lu\n", myplayerdata->gamenumber, myplayerdata->playerid, myplayerdata->input, myplayerdata->output, pthread_self() );
 
 	//while( 1 )
 	{
