@@ -32,6 +32,12 @@ void * game_f( void *data )
 		uint8_t *data;
 
 		if ( -1 == read( mygamedata->output, commandbuffer, COMMAND_SIZE ) ) {
+			//REMOVE THIS IF STATEMENT WHEN EPOLL IMPLEMENTED
+			if( errno == EAGAIN ) {
+				sleep(1);
+				continue;
+			}
+				
 			char buf[ BUFFER_SIZE ];
 			sprintf( buf, "Error reading in server command packet for game %d\n", mygamedata->gamenumber );
 			perror( buf );

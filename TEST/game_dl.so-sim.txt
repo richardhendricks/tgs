@@ -21,4 +21,5 @@
 4:7
 3:9999 //Kill game 9999
 4:20  //Wait for first game to complete
+3:123 //Kill game 123
 5

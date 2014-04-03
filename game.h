@@ -9,6 +9,7 @@
 #include <pthread.h>
 #include <string.h>
 #include <stdint.h>
+#include <errno.h> 
 
 #include <sys/epoll.h>
 #include <sys/types.h>
