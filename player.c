@@ -10,7 +10,7 @@ void * player_f( void *data )
 	myplayerdata = (struct playerdata_t *) data;
 	int retval;
 
-	printf( "NEW PLAYER: gamenumber %d, playerid %d, input %d, output %d, thread id %lu\n", myplayerdata->gamenumber, myplayerdata->playerid, myplayerdata->input, myplayerdata->output, pthread_self() );
+	printf( "NEW PLAYER: %d, game %d, inp read %d, inp write %d, outp read %d, outp write %d, thread id %lu\n", myplayerdata->playerid, myplayerdata->gamenumber, myplayerdata->input[READPIPE], myplayerdata->input[WRITEPIPE], myplayerdata->output[READPIPE], myplayerdata->output[WRITEPIPE], pthread_self() );
 
 	//while( 1 )
 	{
@@ -26,7 +26,14 @@ void * player_f( void *data )
 		//report status from game thread and print
 
 	}
-	retval = EXIT_SUCCESS;
+	//Delay a few seconds until we get while loop finished
 	sleep(15);
+
+	close( myplayerdata->input[READPIPE] );
+	close( myplayerdata->input[WRITEPIPE] );
+	close( myplayerdata->output[READPIPE] );
+	close( myplayerdata->output[WRITEPIPE] );
+
+	retval = EXIT_SUCCESS;
 	pthread_exit( (void *)(long)retval );
 }

@@ -29,8 +29,8 @@
 
 struct gamedata_t {
 	int gamenumber;
-	int input; 	// file descriptor for data going to game thread
-	int output;	// file descriptor for data sent from game thread
+	int input[2]; 	// pipe file descriptor for data to game thread
+	int output[2];	// pipe file descriptor for data from game thread
 	char gamename[BUFFER_SIZE];
 	int players[MAX_PLAYERS]; //reference to array of players on this game
 	pthread_mutex_t mutex;

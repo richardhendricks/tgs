@@ -19,28 +19,33 @@ void create_game(int gamenum, struct gamedata_t *game_d ) {
 
 	//Setup default attribs for new threads
 	rc = pthread_attr_init( &attribute );
-	if( rc != 0 )
-	{
+	if( rc != 0 ) {
 		perror ("Error during game thread attribute creation" );
 		exit( EXIT_FAILURE );
 	}
 
 	rc = pthread_attr_setstacksize( &attribute, STACK_SIZE );
-	if( rc != 0 )
-	{
+	if( rc != 0 ) {
 		perror ("Error during game thread stack size change" );
 		exit( EXIT_FAILURE );
 	}
 
 	game_d->gamenumber = gamenum;
-	if( pipe2( gamep, O_NONBLOCK ) != 0 )
-	{
+
+	if( pipe2( gamep, O_NONBLOCK ) != 0 ) {
 		perror ("Error during game pipe creation" );
 		exit( EXIT_FAILURE );
 	}
+	game_d->input[WRITEPIPE] = gamep[WRITEPIPE];
+	game_d->input[READPIPE] = gamep[READPIPE];
 
-	game_d->input = gamep[WRITEPIPE];
-	game_d->output = gamep[READPIPE];
+	if( pipe2( gamep, O_NONBLOCK ) != 0 ) {
+		perror ("Error during game pipe creation" );
+		exit( EXIT_FAILURE );
+	}
+	game_d->output[WRITEPIPE] = gamep[WRITEPIPE];
+	game_d->output[READPIPE] = gamep[READPIPE];
+
 	rc = pthread_create( &games[num_games], &attribute, game_f, game_d );
 	if( rc != 0 )
 	{
@@ -57,29 +62,35 @@ void create_player(const struct gamedata_t gamedata, struct playerdata_t *player
 
 	//Setup default attribs for new threads
 	rc = pthread_attr_init( &attribute );
-	if( rc != 0 )
-	{
+	if( rc != 0 ) {
 		perror ("Error during player thread attribute creation" );
 		exit( EXIT_FAILURE );
 	}
 
 	rc = pthread_attr_setstacksize( &attribute, STACK_SIZE );
-	if( rc != 0 )
-	{
+	if( rc != 0 ) {
 		perror ("Error during player thread stack size change" );
 		exit( EXIT_FAILURE );
 	}
 
 	player_d->gamenumber = gamedata.gamenumber;
-	if( pipe2( playerp, O_NONBLOCK ) != 0 )
-	{
+
+	if( pipe2( playerp, O_NONBLOCK ) != 0 ) {
 		perror ("Error during player pipe creation" );
 		exit( EXIT_FAILURE );
 	}
+	player_d->input[WRITEPIPE] = playerp[WRITEPIPE];
+	player_d->input[READPIPE] = playerp[READPIPE];
 
-	player_d->input = playerp[WRITEPIPE];
-	player_d->output = playerp[READPIPE];
+	if( pipe2( playerp, O_NONBLOCK ) != 0 ) {
+		perror ("Error during player pipe creation" );
+		exit( EXIT_FAILURE );
+	}
+	player_d->output[WRITEPIPE] = playerp[WRITEPIPE];
+	player_d->output[READPIPE] = playerp[READPIPE];
+
 	player_d->playerid = playerid;
+
 	rc = pthread_create( &players[num_players], &attribute, player_f, player_d );
 	if( rc != 0 )
 	{
@@ -88,7 +99,7 @@ void create_player(const struct gamedata_t gamedata, struct playerdata_t *player
 	}
 
 	//notify game about new player
-	if ( -1 == write( gamedata.input, commandbuffer, create_add_player_packet( commandbuffer, player_d ) ) )
+	if ( -1 == write( gamedata.input[WRITEPIPE], commandbuffer, create_add_player_packet( commandbuffer, player_d ) ) )
 	{
 		perror( "Error trying to write to server input pipe to add a new player\n" );
 		exit ( EXIT_FAILURE );
@@ -164,8 +175,7 @@ int main(int argc, char *argv[])
 		switch( simcommand )
 		{
 		case CREATE_GAME:
-			if ( fscanf( simfile, ":%d", &gamenum ) != 1 )
-			{
+			if ( fscanf( simfile, ":%d", &gamenum ) != 1 ) {
 				printf( " Error in simfile CREATE_GAME format\n" );
 				exit( EXIT_FAILURE );
 			}
@@ -174,12 +184,10 @@ int main(int argc, char *argv[])
 			num_games++;
 			break;
 		case ADD_PLAYER:
-			if ( fscanf( simfile, ":%d", &gamenum ) != 1 )
-			{
+			if ( fscanf( simfile, ":%d", &gamenum ) != 1 ) {
 				printf( " Error in simfile ADD_PLAYER format\n" );
 				exit( EXIT_FAILURE );
 			}
-			printf( "Adding new player\n" );
 			create_player( game_data[findgame( gamenum, game_data, max_test_games )], &player_data[num_players], num_players );
 			num_players++;
 			break;
@@ -191,9 +199,7 @@ int main(int argc, char *argv[])
 				printf( " Error in simfile STOP_GAME format\n" );
 				exit( EXIT_FAILURE );
 			}
-			printf( "Stopping game %d\n", gamenum );
-
-			if ( -1 == write( game_data[ findgame( gamenum, game_data, max_test_games ) ].input, commandbuffer, create_stop_game_packet( commandbuffer ) ) ) {
+			if ( -1 == write( game_data[ findgame( gamenum, game_data, max_test_games ) ].input[WRITEPIPE], commandbuffer, create_stop_game_packet( commandbuffer ) ) ) {
 				perror (" Error writing to game input pipe\n" );
 				exit( EXIT_FAILURE );
 			}
@@ -203,8 +209,7 @@ int main(int argc, char *argv[])
 		case WAIT_TIME:
 			{
 			int delay;
-			if ( fscanf( simfile, ":%d", &delay ) != 1 )
-			{
+			if ( fscanf( simfile, ":%d", &delay ) != 1 ) {
 				printf( " Error in simfile WAIT_TIME format\n" );
 				exit( EXIT_FAILURE );
 			}
