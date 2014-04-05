@@ -6,9 +6,73 @@
 // Need to add a little extra to account for packets
 #define COMMAND_SIZE ( BUFFER_SIZE + sizeof (struct command_packet ) )
 
-//RAH STOP HERE
-//int process_server_command( 
+//RAH Will need to add smarter control over adding/removing players
+//    Right now all it does is use an array, and it doesn't recover empty
+//    or deleted players
+int process_server_command( struct gamedata_t *mygamedata, struct playerdata_t *myplayers )
+{
+	uint8_t commandbuffer[ COMMAND_SIZE ];
+	struct command_packet *cmd;
+	int readsize;
+	int currentpacket=0;
+	bool moredata = true;
 
+	// read() is not buffered, so it is possible to receive multiple
+	// packets of data if we don't get scheduled soon enough.
+	// currentpacket points to the start of the current packet in commandbuffer
+	// This implemtnation fails if read returns a partial packet.
+	readsize =  read( mygamedata->input[READPIPE], commandbuffer, COMMAND_SIZE );
+	if ( -1 == readsize ) {
+		int retval = errno;
+		printf( "Error reading in server command packet for game %d\n", mygamedata->gamenumber );
+		pthread_exit( (void *) (long)retval );
+	}
+
+	while( moredata )
+	{
+		cmd = (struct command_packet *)&commandbuffer[ currentpacket ];
+
+		switch( cmd->command )
+		{
+		case stop_game:
+			printf( "Stopping game %d\n", mygamedata->gamenumber );
+			return false;
+			break;
+
+		case add_player:
+			if( mygamedata->numplayers == MAX_PLAYERS ) {
+				printf( "Error, game %d is full.\n", mygamedata->gamenumber );
+				return false;
+			}
+			memcpy( (void*) &myplayers[mygamedata->numplayers], (void*) &commandbuffer[ sizeof(struct command_packet) + currentpacket ], cmd->datasize );
+
+			printf( "Game %d adding player %d\n", mygamedata->gamenumber, myplayers[mygamedata->numplayers].playerid );
+			mygamedata->numplayers++;
+			break;
+
+		case report_status:
+			printf( "Reporting status for game %d\n", mygamedata->gamenumber );
+			printf( "Number of players: %d\n", mygamedata->numplayers );
+			int i;
+			for( i = 0; i < mygamedata->numplayers; i++ ) {
+				printf(" Player %d id %d\n", i, myplayers[ i ].playerid );
+			}
+			break;
+
+		default:
+			printf( "Unknown command for game %d\n", mygamedata->gamenumber );
+			return false;
+			break;
+		}
+
+		//Advance to the next packet read
+		currentpacket += cmd->datasize + sizeof( struct command_packet );
+		if( currentpacket >= readsize ) {
+			moredata = false;
+		}
+	}
+	return true;
+}
 
 //int process_player_command( 
 
@@ -17,71 +81,53 @@ void * game_f( void *data )
 {
 	struct gamedata_t *mygamedata;
 	mygamedata = (struct gamedata_t *) data;
-	int retval; //we return just a success/failure value
+	struct playerdata_t *myplayers;
 	bool run=true;
+	int retval;
+  
+	int epfd;
+	struct epoll_event event_setup;
+
+	myplayers = malloc( sizeof (struct playerdata_t) * MAX_PLAYERS );
+	for( int i = 0; i < MAX_PLAYERS; i++ ){
+		myplayers[i].playerid = -1;
+	}
+	mygamedata->numplayers=0;
 
 	// (MAX_PLAYERS+1) because of the extra pipe to talk to the server
-	int epfd;
-	struct epoll_event events[MAX_PLAYERS + 1 ];
-
-	uint8_t commandbuffer[ COMMAND_SIZE ];
-
-	printf( "NEW GAME: %d, inp read %d, inp write %d, outp read %d, outp write %d, thread id %lu\n", mygamedata->gamenumber, mygamedata->input[READPIPE], mygamedata->input[WRITEPIPE], mygamedata->output[READPIPE], mygamedata->output[WRITEPIPE], pthread_self() );
-
 	epfd = epoll_create ( MAX_PLAYERS + 1 );
 
+	printf( "NG %d ip rd %d ip wr %d op rd %d op wr %d epfd %d tid %lu\n", mygamedata->gamenumber, mygamedata->input[READPIPE], mygamedata->input[WRITEPIPE], mygamedata->output[READPIPE], mygamedata->output[WRITEPIPE], epfd, pthread_self() );
+
 	//Setting bit 63 == this is a server command
-	events[0].data.u64 = 1UL << 63;
-	if ( -1 == epoll_ctl( epfd, EPOLL_CTL_ADD, mygamedata->input[READPIPE], &events[0] ) ) {
-		retval = errno;
+	event_setup.data.u64 = SRV_CMD;
+	event_setup.events = EPOLLIN;
+	if ( -1 == epoll_ctl( epfd, EPOLL_CTL_ADD, mygamedata->input[READPIPE], &event_setup ) ) {
+		retval = errno; //we return just a success/failure value
 		printf( "Error adding server fd to epoll list\n" );
 		pthread_exit( (void *) (long)retval );
 	}
 
 	while( run )
 	{
-		struct command_packet *cmd;
-		uint8_t *data;
+		int numevents;
+		struct epoll_event event_list[MAX_EVENTS];
 
-		if ( -1 == read( mygamedata->input[READPIPE], commandbuffer, COMMAND_SIZE ) ) {
-			//REMOVE THIS IF STATEMENT WHEN EPOLL IMPLEMENTED
-			if( errno == EAGAIN ) {
-				errno = 0;
-				sleep(1);
-				continue;
+		// Wait forever for an event from a player or the server
+		// Later, for a dyamic game that has timed updates, the 
+		// -1 is replaced with how many ms to wait
+//		printf( "Game %d waiting for event\n", mygamedata->gamenumber );
+		numevents = epoll_wait( epfd, event_list, MAX_EVENTS, -1 );
+
+		// Save a variable by counting down ( currently MAX_EVENTS
+		// is 1) , does it matter if we start at the end?
+		for( numevents--;numevents >= 0; numevents-- ) {
+			if( event_list[numevents].data.u64 == ( SRV_CMD ) ) {
+				run = process_server_command( mygamedata, myplayers );
 			}
-				
-			retval = errno;
-			printf( "Error reading in server command packet for game %d\n", mygamedata->gamenumber );
-			pthread_exit( (void *) (long)retval );
+			
+			//Process player command
 		}
-
-		printf( "command received for game %d\n", mygamedata->gamenumber );
-		cmd = (struct command_packet *)commandbuffer;
-
-		switch( cmd->command )
-		{
-		case stop_game:
-			printf( "Stopping game %d\n", mygamedata->gamenumber );
-			run = false;
-			break;
-		case add_player:
-			break;
-		case report_status:
-			break;
-		default:
-			break;
-		}
-		//Read the pipe, wait until there is data for us
-		//
-		//Check the command packet
-		//switch based on the command
-		//
-		//quit game = notify player threads and terminate
-		//
-		//add player = Use provided pipe to talk to a player thread
-		//
-		//report status from game thread and print
 
 	}
 

@@ -2,13 +2,8 @@
 
 #include "dll_test.h"
 
-//Pipes are atomic read/write as long as the amount is smaller than PIPE_BUF, with O_NONBLOCK any writes larger than PIPE_BUF will throw an error on write
-
 pthread_t games[max_test_games];
 pthread_t players[max_test_players];
-
-// player simulation function
-void *player_f(void *);
 
 //Test function for games
 
@@ -130,6 +125,7 @@ int main(int argc, char *argv[])
 	struct playerdata_t player_data[max_test_players];
 
 	char buffer[BUFFER_SIZE];
+	uint8_t commandbuffer[ BUFFER_SIZE ];
 	FILE *simfile;
 	simcommands_t simcommand=-1;
 	int gamenum; 
@@ -191,10 +187,8 @@ int main(int argc, char *argv[])
 			create_player( game_data[findgame( gamenum, game_data, max_test_games )], &player_data[num_players], num_players );
 			num_players++;
 			break;
-		case STOP_GAME:
-			{
-			uint8_t commandbuffer[ BUFFER_SIZE ];
 
+		case STOP_GAME:
 			if ( fscanf( simfile, ":%d", &gamenum ) != 1 ) {
 				printf( " Error in simfile STOP_GAME format\n" );
 				exit( EXIT_FAILURE );
@@ -203,24 +197,34 @@ int main(int argc, char *argv[])
 				perror (" Error writing to game input pipe\n" );
 				exit( EXIT_FAILURE );
 			}
-
-			}
 			break;
+
 		case WAIT_TIME:
 			{
-			int delay;
-			if ( fscanf( simfile, ":%d", &delay ) != 1 ) {
-				printf( " Error in simfile WAIT_TIME format\n" );
-				exit( EXIT_FAILURE );
-			}
-			printf( "Delaying for %d seconds\n", delay );
-			while(  delay != 0 ) {
-				delay = sleep(delay);
-			}
+				int delay;
+				if ( fscanf( simfile, ":%d", &delay ) != 1 ) {
+					printf( " Error in simfile WAIT_TIME format\n" );
+					exit( EXIT_FAILURE );
+				}
+				printf( "Delaying for %d seconds\n", delay );
+				while(  delay != 0 ) {
+					delay = sleep(delay);
+				}
 			}
 			break;
 		case QUIT_TEST:
 			goto cleanup;
+
+		case GET_STATUS:
+			if ( fscanf( simfile, ":%d", &gamenum ) != 1 ) {
+				printf( " Error in simfile STOP_GAME format\n" );
+				exit( EXIT_FAILURE );
+			}
+			if ( -1 == write( game_data[ findgame( gamenum, game_data, max_test_games ) ].input[WRITEPIPE], commandbuffer, create_status_game_packet( commandbuffer ) ) ) {
+				perror (" Error writing to game input pipe\n" );
+				exit( EXIT_FAILURE );
+			}
+			break;
 		default:
 			printf( " Invalid sim command \n" );
 			exit( EXIT_FAILURE );

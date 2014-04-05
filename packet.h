@@ -36,5 +36,6 @@ struct player_results_packet{
 
 int create_add_player_packet( uint8_t *, struct playerdata_t *);
 int create_stop_game_packet( uint8_t * );
+int create_status_game_packet( uint8_t * );
 
 #endif

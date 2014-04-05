@@ -1,8 +1,8 @@
-HDRS := gameserver.h game.h handler.h dll_test.h
+HDRS := gameserver.h game.h handler.h dll_test.h packet.h
 
 OBJS := game_dl.so libhandler.so.1.0 libhandler.so libhandler.so.1 dll_test.o player.o packet.o server.out
 
-CFLAGS:= -O2 -std=gnu99 -Wall -pedantic -fPIC
+CFLAGS:= -O2 -std=gnu99 -Wall -pedantic -fPIC -g
 
 OBJCFLAGS := $(CFLAGS) -c
 LIBCFLAGS := $(CFLAGS) -shared -lc

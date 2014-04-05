@@ -14,7 +14,7 @@ int num_games;
 int num_players;
 int linecount;
 
-typedef enum e_simcommands { CREATE_GAME=1, ADD_PLAYER, STOP_GAME, WAIT_TIME, QUIT_TEST } simcommands_t;
+typedef enum e_simcommands { CREATE_GAME=1, ADD_PLAYER, STOP_GAME, WAIT_TIME, QUIT_TEST, GET_STATUS } simcommands_t;
 
 #define _GNU_SOURCE
 

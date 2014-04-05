@@ -10,7 +10,7 @@ void * player_f( void *data )
 	myplayerdata = (struct playerdata_t *) data;
 	int retval;
 
-	printf( "NEW PLAYER: %d, game %d, inp read %d, inp write %d, outp read %d, outp write %d, thread id %lu\n", myplayerdata->playerid, myplayerdata->gamenumber, myplayerdata->input[READPIPE], myplayerdata->input[WRITEPIPE], myplayerdata->output[READPIPE], myplayerdata->output[WRITEPIPE], pthread_self() );
+	printf( "NP %d, game %d ip rd %d ip wr %d op rd %d op wr %d tid %lu\n", myplayerdata->playerid, myplayerdata->gamenumber, myplayerdata->input[READPIPE], myplayerdata->input[WRITEPIPE], myplayerdata->output[READPIPE], myplayerdata->output[WRITEPIPE], pthread_self() );
 
 	//while( 1 )
 	{

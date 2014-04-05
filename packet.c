@@ -5,7 +5,17 @@ int create_stop_game_packet( uint8_t *commandbuffer )
 	struct command_packet header;
 
 	header.command = stop_game;
-	header.datasize = sizeof ( struct playerdata_t );
+	header.datasize = 0;
+	memcpy( (void*)commandbuffer, (void*)&header, sizeof( struct command_packet ) );
+	return sizeof(struct command_packet );
+}
+
+int create_status_game_packet( uint8_t *commandbuffer )
+{
+	struct command_packet header;
+
+	header.command = report_status;
+	header.datasize = 0;
 	memcpy( (void*)commandbuffer, (void*)&header, sizeof( struct command_packet ) );
 	return sizeof(struct command_packet );
 }

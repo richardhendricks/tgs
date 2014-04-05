@@ -24,15 +24,19 @@
 #define READPIPE (0)
 #define WRITEPIPE (1)
 
-//default value is 10, for custom value #undef and #define in game-specific header file
+//default value is 10, for custom value #undef and #define in game-specific header file, this includes spectators
 #define MAX_PLAYERS 10
+
+//Currently we only allow for 1 event at a time.
+#define MAX_EVENTS 1
+
+#define SRV_CMD (1UL << 63)
 
 struct gamedata_t {
 	int gamenumber;
 	int input[2]; 	// pipe file descriptor for data to game thread
 	int output[2];	// pipe file descriptor for data from game thread
-	char gamename[BUFFER_SIZE];
-	int players[MAX_PLAYERS]; //reference to array of players on this game
+	int numplayers;
 	pthread_mutex_t mutex;
 };
 

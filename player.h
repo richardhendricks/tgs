@@ -13,4 +13,6 @@ struct playerdata_t {
 	int output[2];	// file descriptor for data sent from game thread
 };
 
+void *player_f( void *);
+
 #endif

@@ -5,6 +5,7 @@
 // 3 - Kill a game, :<gamenumber>
 // 4 - Wait  :<secondstowait>
 // 5 - quit
+// 6 - report status :<gamenumber>
 1:123 // Create a new game
 2:123:player1-sim.txt:player1-out.txt //Add player 1 to game 123
 4:1
@@ -19,7 +20,9 @@
 4:1
 2:9999:player6-sim.txt:player6-out.txt //Add player 6 to game 9999 - should fail.  Maybe update game to ask if they want to be a watcher
 4:7
+6:9999
 3:9999 //Kill game 9999
 4:20  //Wait for first game to complete
+6:123
 3:123 //Kill game 123
 5
