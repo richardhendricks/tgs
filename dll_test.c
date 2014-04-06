@@ -6,6 +6,7 @@ pthread_t games[max_test_games];
 pthread_t players[max_test_players];
 
 //Test function for games
+//Might be better to just make this the server, and set it up to support a test function by passing in a file name to use
 
 void create_game(int gamenum, struct gamedata_t *game_d ) {
 	pthread_attr_t attribute;
@@ -22,6 +23,12 @@ void create_game(int gamenum, struct gamedata_t *game_d ) {
 	rc = pthread_attr_setstacksize( &attribute, STACK_SIZE );
 	if( rc != 0 ) {
 		perror ("Error during game thread stack size change" );
+		exit( EXIT_FAILURE );
+	}
+
+	rc = pthread_attr_setdetachstate( &attribute, PTHREAD_CREATE_DETACHED );
+	if( rc != 0 ) {
+		perror( "Error during game thread attribute detached state\n" );
 		exit( EXIT_FAILURE );
 	}
 
@@ -68,6 +75,12 @@ void create_player(const struct gamedata_t gamedata, struct playerdata_t *player
 		exit( EXIT_FAILURE );
 	}
 
+	rc = pthread_attr_setdetachstate( &attribute, PTHREAD_CREATE_DETACHED );
+	if( rc != 0 ) {
+		perror( "Error during game thread attribute detached state\n" );
+		exit( EXIT_FAILURE );
+	}
+
 	player_d->gamenumber = gamedata.gamenumber;
 
 	if( pipe2( playerp, O_NONBLOCK ) != 0 ) {
@@ -100,8 +113,23 @@ void create_player(const struct gamedata_t gamedata, struct playerdata_t *player
 		exit ( EXIT_FAILURE );
 	}
 
+}
+
+void tellplayerentersimmode( struct playerdata_t *player_d, FILE *simfile ) {
+	char inoutfiles[ BUFFER_SIZE ];
+	uint8_t commandbuffer[ BUFFER_SIZE ];
+
+	if ( fscanf( simfile, ":%s", inoutfiles ) != 1 ) {
+		printf( " Error in simfile ADD_PLAYER format\n" );
+		exit( EXIT_FAILURE );
+	}
+	printf( "Player %d sim mode with files %s pipe %d\n", player_d->playerid, inoutfiles, player_d->output[WRITEPIPE] );
 	//Notfiy player to enter simulation mode
 	//Need to pass in the player sim file location.
+	if ( -1 == write( player_d->output[WRITEPIPE], commandbuffer, create_runplayersim_packet( commandbuffer, inoutfiles ) ) ) {
+		perror( "Error trying to write to game input pipe to enter sim mode\n" );
+		exit ( EXIT_FAILURE );
+	}
 }
 
 int findgame (int gamenum, struct gamedata_t games[], int maxgames )
@@ -185,6 +213,7 @@ int main(int argc, char *argv[])
 				exit( EXIT_FAILURE );
 			}
 			create_player( game_data[findgame( gamenum, game_data, max_test_games )], &player_data[num_players], num_players );
+			tellplayerentersimmode( &player_data[num_players], simfile );
 			num_players++;
 			break;
 
@@ -236,15 +265,7 @@ int main(int argc, char *argv[])
 	}
 
 cleanup:
-	//Wait for all threads to complete
-	for( i = 0; i < num_games; i++ ) {
-		pthread_join( games[i], (void *)&rc );
-		printf( "Child thread complete, returned %d\n", (int) rc);
-	}
-	for( i = 0; i < num_players; i++ ) {
-		pthread_join( players[i], (void *)&rc );
-		printf( "Child thread complete, returned %d\n", (int) rc);
-	}
-
+//Send commands to all game threads to terminate
+//
 	exit( EXIT_SUCCESS );
 }

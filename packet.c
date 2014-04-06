@@ -31,3 +31,27 @@ int create_add_player_packet( uint8_t *commandbuffer, struct playerdata_t *playe
 
 	return (sizeof(struct command_packet) + sizeof(struct playerdata_t ) );
 }
+
+int create_runplayersim_packet( uint8_t *commandbuffer, char* simfilename )
+{
+	struct player_results_packet header;
+
+	header.result = runplayersim;
+	header.datasize = strlen( simfilename );
+	memcpy( (void*) commandbuffer, (void*) &header, sizeof( struct player_results_packet ) );
+	memcpy( (void*) &commandbuffer[sizeof (struct player_results_packet) ], (void *) simfilename, header.datasize );
+
+	return (sizeof(struct player_results_packet) + header.datasize );
+}
+
+int create_terminate_packet( uint8_t *commandbuffer )
+{
+	struct player_results_packet header;
+
+	header.result = terminate;
+	header.datasize = 0;
+
+	memcpy( (void*)commandbuffer, (void*)&header, sizeof( struct player_results_packet ) );
+	return sizeof(struct player_results_packet );
+}
+

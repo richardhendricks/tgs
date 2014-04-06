@@ -21,6 +21,10 @@
 #define STACK_SIZE (64 * 1024)
 #define BUFFER_SIZE (512)
 
+// Need to add a little extra to account for packets
+#define COMMAND_SIZE ( BUFFER_SIZE + sizeof (struct command_packet ) )
+
+
 #define READPIPE (0)
 #define WRITEPIPE (1)
 

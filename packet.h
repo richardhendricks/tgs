@@ -10,6 +10,7 @@ struct command_packet {
 	// actual data follows packet header
 };
 
+/* Don't think is necessary any more
 typedef enum e_server_results { ok = 0, error_game_full, status_report } server_results_t;
 
 struct result_packet {
@@ -17,6 +18,7 @@ struct result_packet {
 	int datasize;
 	// actual data follows packet header
 };
+*/
 
 typedef enum e_player_commands { quit_game = 0, status, join, watch, gamecommand } player_commands_t;
 
@@ -37,5 +39,7 @@ struct player_results_packet{
 int create_add_player_packet( uint8_t *, struct playerdata_t *);
 int create_stop_game_packet( uint8_t * );
 int create_status_game_packet( uint8_t * );
+int create_runplayersim_packet( uint8_t *, char * );
+int create_terminate_packet( uint8_t *commandbuffer );
 
 #endif

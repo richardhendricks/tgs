@@ -3,8 +3,64 @@
 
 //Specific header for game
 
-// Need to add a little extra to account for packets
-#define COMMAND_SIZE ( BUFFER_SIZE + sizeof (struct command_packet ) )
+int process_player_command( struct gamedata_t *mygamedata, struct playerdata_t *myplayers )
+{
+	uint8_t commandbuffer[ COMMAND_SIZE ];
+	struct player_command_packet *cmd;
+	int readsize;
+	int currentpacket=0;
+	bool moredata = true;
+
+	// read() is not buffered, so it is possible to receive multiple
+	// packets of data if we don't get scheduled soon enough.
+	// currentpacket points to the start of the current packet in commandbuffer
+	// This implementation fails if read returns a partial packet.
+	readsize =  read( mygamedata->input[READPIPE], commandbuffer, COMMAND_SIZE );
+	if ( -1 == readsize ) {
+		printf( "Error %d reading in server command packet for game %d\n", errno,  mygamedata->gamenumber );
+		return false;
+	}
+
+	while( moredata )
+	{
+		cmd = (struct player_command_packet *)&commandbuffer[ currentpacket ];
+
+		switch( cmd->command )
+		{
+		case quit_game:
+			printf( "Player  is quitting game %d\n", mygamedata->gamenumber );
+			break;
+
+		case status:
+			printf( "Reporting status to player \n "  );
+			break;
+
+		case join:
+			printf( "Player joining game %d\n", mygamedata->gamenumber );
+			break;
+
+		case watch:
+			printf( "Player watching game %d\n", mygamedata->gamenumber );
+			break;
+
+		case gamecommand:
+			printf( "Player sending command to game %d\n", mygamedata->gamenumber );
+			break;
+
+		default:
+			printf( "Unknown command for game %d\n", mygamedata->gamenumber );
+			return false;
+			break;
+		}
+
+		//Advance to the next packet read
+		currentpacket += cmd->datasize + sizeof( struct command_packet );
+		if( currentpacket >= readsize ) {
+			moredata = false;
+		}
+	}
+	return true;
+}
 
 //RAH Will need to add smarter control over adding/removing players
 //    Right now all it does is use an array, and it doesn't recover empty
@@ -20,12 +76,11 @@ int process_server_command( struct gamedata_t *mygamedata, struct playerdata_t *
 	// read() is not buffered, so it is possible to receive multiple
 	// packets of data if we don't get scheduled soon enough.
 	// currentpacket points to the start of the current packet in commandbuffer
-	// This implemtnation fails if read returns a partial packet.
+	// This implementation fails if read returns a partial packet.
 	readsize =  read( mygamedata->input[READPIPE], commandbuffer, COMMAND_SIZE );
 	if ( -1 == readsize ) {
-		int retval = errno;
-		printf( "Error reading in server command packet for game %d\n", mygamedata->gamenumber );
-		pthread_exit( (void *) (long)retval );
+		printf( "Error %d reading in server command packet for game %d\n", errno,  mygamedata->gamenumber );
+		return false;
 	}
 
 	while( moredata )
@@ -74,7 +129,27 @@ int process_server_command( struct gamedata_t *mygamedata, struct playerdata_t *
 	return true;
 }
 
-//int process_player_command( 
+void game_cleanup( struct gamedata_t *mygamedata, struct playerdata_t *myplayers )
+{
+	uint8_t commandbuffer[ COMMAND_SIZE ];
+
+	close( mygamedata->input[READPIPE] );
+	close( mygamedata->input[WRITEPIPE] );
+	close( mygamedata->output[READPIPE] );
+	close( mygamedata->output[WRITEPIPE] );
+
+	for( int i = 0; i < mygamedata->numplayers; i++ ){
+		if ( -1 == write( myplayers[i].output[WRITEPIPE], commandbuffer, create_terminate_packet( commandbuffer ) ) ) {
+			perror( "Error trying to write to game input pipe to enter sim mode\n" );
+			exit ( EXIT_FAILURE );
+		}
+	}
+	free( myplayers );
+	mygamedata->numplayers=0;
+	mygamedata->gamenumber = -1;
+}
+
+
 
 //Game functions
 void * game_f( void *data )
@@ -132,10 +207,7 @@ void * game_f( void *data )
 	}
 
 	close( epfd );
-	close( mygamedata->input[READPIPE] );
-	close( mygamedata->input[WRITEPIPE] );
-	close( mygamedata->output[READPIPE] );
-	close( mygamedata->output[WRITEPIPE] );
+	game_cleanup( mygamedata, myplayers );
 
 	retval = EXIT_SUCCESS;
 	pthread_exit( (void *) (long)retval );
