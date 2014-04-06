@@ -37,7 +37,7 @@ int create_runplayersim_packet( uint8_t *commandbuffer, char* simfilename )
 	struct player_results_packet header;
 
 	header.result = runplayersim;
-	header.datasize = strlen( simfilename );
+	header.datasize = strlen( simfilename ) + 1; //Add one for \0
 	memcpy( (void*) commandbuffer, (void*) &header, sizeof( struct player_results_packet ) );
 	memcpy( (void*) &commandbuffer[sizeof (struct player_results_packet) ], (void *) simfilename, header.datasize );
 

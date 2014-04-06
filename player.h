@@ -11,6 +11,9 @@ struct playerdata_t {
 	int playerid; //index into file with player info, password, etc
 	int input[2]; 	// file descriptor for data going to game thread
 	int output[2];	// file descriptor for data sent from game thread
+	FILE *simfilein; // file pointer for sim file input
+	FILE *simfileout; // file pointer for sim file output
+	bool simmode;
 };
 
 void *player_f( void *);

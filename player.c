@@ -36,7 +36,13 @@ int process_game_command( struct playerdata_t *myplayer )
 			break;
 
 		case runplayersim:
-			printf( "Player %d entering sim mode\n", myplayer->playerid );
+			{
+				char filenamesimin[BUFFER_SIZE], filenamesimout[BUFFER_SIZE];
+				sscanf( (char*)&commandbuffer[ sizeof( struct player_results_packet) ], "%[^:]:%s", filenamesimin, filenamesimout );
+				printf( "Player %d simfilein %s simfileout %s\n", myplayer->playerid, filenamesimin, filenamesimout );
+
+				myplayer->simmode=true;
+			}
 			
 			break;
 

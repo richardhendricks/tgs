@@ -99,16 +99,18 @@ void create_player(const struct gamedata_t gamedata, struct playerdata_t *player
 
 	player_d->playerid = playerid;
 
+	player_d->simmode = false;
+	player_d->simfilein = NULL;
+	player_d->simfileout = NULL;
+
 	rc = pthread_create( &players[num_players], &attribute, player_f, player_d );
-	if( rc != 0 )
-	{
+	if( rc != 0 ) {
 		perror ("Error during player thread creation" );
 		exit( EXIT_FAILURE );
 	}
 
 	//notify game about new player
-	if ( -1 == write( gamedata.input[WRITEPIPE], commandbuffer, create_add_player_packet( commandbuffer, player_d ) ) )
-	{
+	if ( -1 == write( gamedata.input[WRITEPIPE], commandbuffer, create_add_player_packet( commandbuffer, player_d ) ) ) {
 		perror( "Error trying to write to server input pipe to add a new player\n" );
 		exit ( EXIT_FAILURE );
 	}
@@ -123,7 +125,6 @@ void tellplayerentersimmode( struct playerdata_t *player_d, FILE *simfile ) {
 		printf( " Error in simfile ADD_PLAYER format\n" );
 		exit( EXIT_FAILURE );
 	}
-	printf( "Player %d sim mode with files %s pipe %d\n", player_d->playerid, inoutfiles, player_d->output[WRITEPIPE] );
 	//Notfiy player to enter simulation mode
 	//Need to pass in the player sim file location.
 	if ( -1 == write( player_d->output[WRITEPIPE], commandbuffer, create_runplayersim_packet( commandbuffer, inoutfiles ) ) ) {
@@ -148,7 +149,6 @@ int findgame (int gamenum, struct gamedata_t games[], int maxgames )
 int main(int argc, char *argv[])
 {
 	int rc;
-	int i;
 	struct gamedata_t game_data[max_test_games];
 	struct playerdata_t player_data[max_test_players];
 
