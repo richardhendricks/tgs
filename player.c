@@ -30,6 +30,7 @@ int process_game_command( struct playerdata_t *myplayer )
 		switch( cmd->result )
 		{
 		case result:
+			printf("Results packet:\n%s", (char *)&commandbuffer[ currentpacket + sizeof(struct player_results_packet *) ] );
 			break;
 
 		case request:
