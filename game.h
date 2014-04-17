@@ -40,6 +40,7 @@ struct gamedata_t {
 	int gamenumber;
 	int input[2]; 	// pipe file descriptor for data to game thread
 	int output[2];	// pipe file descriptor for data from game thread
+	int epfd; 		// file descriptor used for epoll
 	int numplayers;
 	pthread_mutex_t mutex;
 };

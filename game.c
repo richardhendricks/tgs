@@ -72,6 +72,7 @@ int process_server_command( struct gamedata_t *mygamedata, struct playerdata_t *
 	int readsize;
 	int currentpacket=0;
 	bool moredata = true;
+	struct epoll_event event_setup;
 
 	// read() is not buffered, so it is possible to receive multiple
 	// packets of data if we don't get scheduled soon enough.
@@ -102,6 +103,17 @@ int process_server_command( struct gamedata_t *mygamedata, struct playerdata_t *
 			memcpy( (void*) &myplayers[mygamedata->numplayers], (void*) &commandbuffer[ sizeof(struct command_packet) + currentpacket ], cmd->datasize );
 
 			printf( "Game %d adding player %d\n", mygamedata->gamenumber, myplayers[mygamedata->numplayers].playerid );
+
+/////RAH STOP HERE
+			event_setup.data.u64 = ;
+			event_setup.events = EPOLLIN;
+			if ( -1 == epoll_ctl( mygamedata->epfd, EPOLL_CTL_ADD, xxxmygamedata->input[READPIPE], &event_setup ) ) {
+		retval = errno; //we return just a success/failure value
+		printf( "Error adding server fd to epoll list\n" );
+		pthread_exit( (void *) (long)retval );
+	}
+
+
 			mygamedata->numplayers++;
 			break;
 
@@ -137,6 +149,7 @@ void game_cleanup( struct gamedata_t *mygamedata, struct playerdata_t *myplayers
 	close( mygamedata->input[WRITEPIPE] );
 	close( mygamedata->output[READPIPE] );
 	close( mygamedata->output[WRITEPIPE] );
+	close( mygamedata->epfd );
 
 	for( int i = 0; i < mygamedata->numplayers; i++ ){
 		if ( -1 == write( myplayers[i].output[WRITEPIPE], commandbuffer, create_terminate_packet( commandbuffer ) ) ) {
@@ -160,7 +173,6 @@ void * game_f( void *data )
 	bool run=true;
 	int retval;
   
-	int epfd;
 	struct epoll_event event_setup;
 
 	myplayers = malloc( sizeof (struct playerdata_t) * MAX_PLAYERS );
@@ -170,14 +182,14 @@ void * game_f( void *data )
 	mygamedata->numplayers=0;
 
 	// (MAX_PLAYERS+1) because of the extra pipe to talk to the server
-	epfd = epoll_create ( MAX_PLAYERS + 1 );
+	mygamedata->epfd = epoll_create ( MAX_PLAYERS + 1 );
 
-	printf( "NG %d ip rd %d ip wr %d op rd %d op wr %d epfd %d tid %lu\n", mygamedata->gamenumber, mygamedata->input[READPIPE], mygamedata->input[WRITEPIPE], mygamedata->output[READPIPE], mygamedata->output[WRITEPIPE], epfd, pthread_self() );
+	printf( "NG %d ip rd %d ip wr %d op rd %d op wr %d epfd %d tid %lu\n", mygamedata->gamenumber, mygamedata->input[READPIPE], mygamedata->input[WRITEPIPE], mygamedata->output[READPIPE], mygamedata->output[WRITEPIPE], mygamedata->epfd, pthread_self() );
 
 	//Setting bit 63 == this is a server command
 	event_setup.data.u64 = SRV_CMD;
 	event_setup.events = EPOLLIN;
-	if ( -1 == epoll_ctl( epfd, EPOLL_CTL_ADD, mygamedata->input[READPIPE], &event_setup ) ) {
+	if ( -1 == epoll_ctl( mygamedata->epfd, EPOLL_CTL_ADD, mygamedata->input[READPIPE], &event_setup ) ) {
 		retval = errno; //we return just a success/failure value
 		printf( "Error adding server fd to epoll list\n" );
 		pthread_exit( (void *) (long)retval );
@@ -192,7 +204,7 @@ void * game_f( void *data )
 		// Later, for a dyamic game that has timed updates, the 
 		// -1 is replaced with how many ms to wait
 //		printf( "Game %d waiting for event\n", mygamedata->gamenumber );
-		numevents = epoll_wait( epfd, event_list, MAX_EVENTS, -1 );
+		numevents = epoll_wait( mygamedata->epfd, event_list, MAX_EVENTS, -1 );
 
 		// Save a variable by counting down ( currently MAX_EVENTS
 		// is 1) , does it matter if we start at the end?
@@ -206,7 +218,6 @@ void * game_f( void *data )
 
 	}
 
-	close( epfd );
 	game_cleanup( mygamedata, myplayers );
 
 	retval = EXIT_SUCCESS;

@@ -7,18 +7,18 @@
 // 5 - quit
 // 6 - report status :<gamenumber>
 1:123 // Create a new game
-2:123:player1-sim.txt:player1-out.txt //Add player 1 to game 123
+2:123:TEST/player0-sim.txt:TEST/player0-out.txt //Add player 1 to game 123
 4:1
-2:123:player2-sim.txt:player2-out.txt //Add player 2 to game 123
+2:123:TEST/player1-sim.txt:TEST/player1-out.txt //Add player 2 to game 123
 4:2
 1:9999 // Create a new game
-2:9999:player3-sim.txt:player3-out.txt //Add player 3 to game 9999
+2:9999:TEST/player2-sim.txt:TEST/player2-out.txt //Add player 3 to game 9999
 4:1
-2:9999:player4-sim.txt:player4-out.txt //Add player 4 to game 9999
+2:9999:TEST/player3-sim.txt:TEST/player3-out.txt //Add player 4 to game 9999
 4:1
-2:9999:player5-sim.txt:player5-out.txt //Add player 5 to game 9999 as watcher
+2:9999:TEST/player4-sim.txt:TEST/player4-out.txt //Add player 5 to game 9999 as watcher
 4:1
-2:9999:player6-sim.txt:player6-out.txt //Add player 6 to game 9999 - should fail.  Maybe update game to ask if they want to be a watcher
+2:9999:TEST/player5-sim.txt:TEST/player5-out.txt //Add player 6 to game 9999 - should fail.  Maybe update game to ask if they want to be a watcher
 4:7
 6:9999
 3:9999 //Kill game 9999

@@ -8,9 +8,10 @@
 // playerdata_t can't contain any pointers, since we are directly providing it to the game
 struct playerdata_t {
 	int gamenumber;
-	int playerid; //index into file with player info, password, etc
+	int playerid; 	//index into file with player info, password, etc
 	int input[2]; 	// file descriptor for data going to game thread
 	int output[2];	// file descriptor for data sent from game thread
+	int epfd;		// epoll file descriptor
 	FILE *simfilein; // file pointer for sim file input
 	FILE *simfileout; // file pointer for sim file output
 	bool simmode;

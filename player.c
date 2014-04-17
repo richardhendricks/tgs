@@ -66,6 +66,16 @@ int process_game_command( struct playerdata_t *myplayer )
 	return true;
 }
 
+void player_cleanup( struct playerdata_t *myplayerdata )
+{
+	close( myplayerdata->input[READPIPE] );
+	close( myplayerdata->input[WRITEPIPE] );
+	close( myplayerdata->output[READPIPE] );
+	close( myplayerdata->output[WRITEPIPE] );
+	close( myplayerdata->epfd );
+
+	myplayerdata->playerid = -1;
+}
 
 //player functions
 void * player_f( void *data )
@@ -75,16 +85,16 @@ void * player_f( void *data )
 	int retval;
 	bool run=true;
   
-	int epfd;
 	struct epoll_event event_setup;
 
-	epfd = epoll_create ( MAX_EVENTS );
+	//Will need to add socket related info at some point.  Will player threads be remote?
+	myplayerdata->epfd = epoll_create ( MAX_EVENTS );
 
-	printf( "NP %d, game %d ip rd %d ip wr %d op rd %d op wr %d epfd %d tid %lu\n", myplayerdata->playerid, myplayerdata->gamenumber, myplayerdata->input[READPIPE], myplayerdata->input[WRITEPIPE], myplayerdata->output[READPIPE], myplayerdata->output[WRITEPIPE], epfd, pthread_self() );
+	printf( "NP %d, game %d ip rd %d ip wr %d op rd %d op wr %d epfd %d tid %lu\n", myplayerdata->playerid, myplayerdata->gamenumber, myplayerdata->input[READPIPE], myplayerdata->input[WRITEPIPE], myplayerdata->output[READPIPE], myplayerdata->output[WRITEPIPE], myplayerdata->epfd, pthread_self() );
 
 	event_setup.data.fd = myplayerdata->output[READPIPE];
 	event_setup.events = EPOLLIN;
-	if ( -1 == epoll_ctl( epfd, EPOLL_CTL_ADD, myplayerdata->output[READPIPE], &event_setup ) ) {
+	if ( -1 == epoll_ctl( myplayerdata->epfd, EPOLL_CTL_ADD, myplayerdata->output[READPIPE], &event_setup ) ) {
 		retval = errno; //we return just a success/failure value
 		printf( "Error adding server fd to epoll list\n" );
 		pthread_exit( (void *) (long)retval );
@@ -99,7 +109,7 @@ void * player_f( void *data )
 //		printf( "Game %d waiting for event\n", mygamedata->gamenumber );
 //		Need to figure out if we can add STDIN so player can quit
 //		when they want to.
-		numevents = epoll_wait( epfd, event_list, MAX_EVENTS, -1 );
+		numevents = epoll_wait( myplayerdata->epfd, event_list, MAX_EVENTS, -1 );
 
 		// Save a variable by counting down ( currently MAX_EVENTS
 		// is 1) , does it matter if we start at the end?
@@ -113,12 +123,7 @@ void * player_f( void *data )
 
 	}
 
-	close( myplayerdata->input[READPIPE] );
-	close( myplayerdata->input[WRITEPIPE] );
-	close( myplayerdata->output[READPIPE] );
-	close( myplayerdata->output[WRITEPIPE] );
-	myplayerdata->playerid = -1;
-
+	player_cleanup( myplayerdata );
 	retval = EXIT_SUCCESS;
 	pthread_exit( (void *)(long)retval );
 }
