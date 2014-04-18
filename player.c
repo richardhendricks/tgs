@@ -5,7 +5,7 @@
 //RAH Will need to add smarter control over adding/removing players
 //    Right now all it does is use an array, and it doesn't recover empty
 //    or deleted players
-int process_game_command( struct playerdata_t *myplayer )
+int process_game_result( struct playerdata_t *myplayer )
 {
 	uint8_t commandbuffer[ COMMAND_SIZE ];
 	struct player_results_packet *cmd;
@@ -29,30 +29,78 @@ int process_game_command( struct playerdata_t *myplayer )
 
 		switch( cmd->result )
 		{
-		case result:
-			printf("Results packet:\n%s", (char *)&commandbuffer[ currentpacket + sizeof(struct player_results_packet *) ] );
+		case result: //Just display data to the screen
+			printf( "Player %d result packet\n", myplayer->playerid );
+			if( true == myplayer->simmode ) {
+				fprintf( myplayer->simfileout, "Results packet:\n%s", (char *)&commandbuffer[ currentpacket + sizeof(struct player_results_packet *) ] );
+			}
 			break;
 
-		case request:
+		case request: //Display data and then wait for player response
+			printf( "Player %d request packet\n", myplayer->playerid );
+			if( true == myplayer->simmode ) {
+				char simcommand[BUFFER_SIZE];
+				uint8_t gamecommand[BUFFER_SIZE];
+				int retval;
+
+				fprintf( myplayer->simfileout, "Request packet:\n%s", (char *)&commandbuffer[ currentpacket + sizeof(struct player_results_packet *) ] );
+				retval = fscanf( myplayer->simfilein, "%s\n", simcommand );
+				//If the player simfile is empty
+				if( EOF == retval ) {
+					printf( "End of player simfile\n");
+					//Special player simfile command -1 to quit game
+					if( -1 == write( myplayer->input[WRITEPIPE], gamecommand, create_quit_game_packet( gamecommand ) ) ) {
+						perror( "Error trying to send quit game packet\n" );
+						exit( EXIT_FAILURE );
+					}
+				} else {
+					//Check for special -1 command to quit game
+					if( strcmp( "-1", (char *)simcommand ) == 0 )
+					{
+						if( -1 == write( myplayer->input[WRITEPIPE], gamecommand, create_quit_game_packet( gamecommand ) ) ) {
+							perror( "Error trying to send quit game packet\n" );
+							exit( EXIT_FAILURE );
+						}
+					} else {
+						//otherwise send command to server
+						if( -1 == write( myplayer->input[WRITEPIPE], gamecommand, create_gamecommand_packet( gamecommand, simcommand ) ) ) {
+							perror( "Error trying to send gamecommand packet\n" );
+							exit( EXIT_FAILURE );
+						}
+					}
+				}
+			}
 			break;
 
-		case runplayersim:
+		case runplayersim: //Switch to SIM mode
 			{
 				char filenamesimin[BUFFER_SIZE], filenamesimout[BUFFER_SIZE];
-				sscanf( (char*)&commandbuffer[ sizeof( struct player_results_packet) ], "%[^:]:%s", filenamesimin, filenamesimout );
-				printf( "Player %d simfilein %s simfileout %s\n", myplayer->playerid, filenamesimin, filenamesimout );
-
+				sscanf( (char*)&commandbuffer[ currentpacket + sizeof( struct player_results_packet) ], "%[^:]:%s", filenamesimin, filenamesimout );
+				printf( "Player %d runplayersim\n", myplayer->playerid );
+				myplayer->simfilein = fopen( filenamesimin, "r" );
+				myplayer->simfileout = fopen( filenamesimout, "w" );
+				if( NULL == myplayer->simfilein || NULL == myplayer->simfileout ) {
+					perror( "Error opening player sim files\n" );
+					exit( EXIT_FAILURE );
+				}
 				myplayer->simmode=true;
 			}
 			
 			break;
 
-		case terminate:
+		case runplayer:
+			//Not implemented yet
+			return false;
+			break;
+		case terminate: //Terminate this player thread
 			printf( "Stopping player %d\n", myplayer->playerid );
+			if( true == myplayer->simmode ) {
+				fprintf( myplayer->simfileout, "Terminate packet\n" );
+			}
 			return false;
 			break;
 
-		default:
+		default: //Uhoh, don't know what to do, quit
 			return false;
 			break;
 		}
@@ -66,15 +114,20 @@ int process_game_command( struct playerdata_t *myplayer )
 	return true;
 }
 
-void player_cleanup( struct playerdata_t *myplayerdata )
+void player_cleanup( struct playerdata_t *myplayer )
 {
-	close( myplayerdata->input[READPIPE] );
-	close( myplayerdata->input[WRITEPIPE] );
-	close( myplayerdata->output[READPIPE] );
-	close( myplayerdata->output[WRITEPIPE] );
-	close( myplayerdata->epfd );
+	close( myplayer->input[READPIPE] );
+	close( myplayer->input[WRITEPIPE] );
+	close( myplayer->output[READPIPE] );
+	close( myplayer->output[WRITEPIPE] );
+	close( myplayer->epfd );
 
-	myplayerdata->playerid = -1;
+	if( true == myplayer->simmode ) {
+		fclose( myplayer->simfileout );
+		fclose( myplayer->simfilein );
+	}
+
+	myplayer->playerid = -1;
 }
 
 //player functions
@@ -90,7 +143,8 @@ void * player_f( void *data )
 	//Will need to add socket related info at some point.  Will player threads be remote?
 	myplayerdata->epfd = epoll_create ( MAX_EVENTS );
 
-	printf( "NP %d, game %d ip rd %d ip wr %d op rd %d op wr %d epfd %d tid %lu\n", myplayerdata->playerid, myplayerdata->gamenumber, myplayerdata->input[READPIPE], myplayerdata->input[WRITEPIPE], myplayerdata->output[READPIPE], myplayerdata->output[WRITEPIPE], myplayerdata->epfd, pthread_self() );
+	//printf( "NP %d, game %d ip rd %d ip wr %d op rd %d op wr %d epfd %d tid %lu\n", myplayerdata->playerid, myplayerdata->gamenumber, myplayerdata->input[READPIPE], myplayerdata->input[WRITEPIPE], myplayerdata->output[READPIPE], myplayerdata->output[WRITEPIPE], myplayerdata->epfd, pthread_self() );
+	printf( "New Player %d game %d\n", myplayerdata->playerid, myplayerdata->gamenumber );
 
 	event_setup.data.fd = myplayerdata->output[READPIPE];
 	event_setup.events = EPOLLIN;
@@ -117,7 +171,7 @@ void * player_f( void *data )
 		// to use int i instead.
 		for( numevents--;numevents >= 0; numevents-- ) {
 			if( myplayerdata->output[READPIPE] == event_list[numevents].data.fd ) {
-				run = process_game_command( myplayerdata );
+				run = process_game_result( myplayerdata );
 			}
 		}
 

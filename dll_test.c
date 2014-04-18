@@ -56,7 +56,23 @@ void create_game(int gamenum, struct gamedata_t *game_d ) {
 	}
 }
 
-void create_player(const struct gamedata_t gamedata, struct playerdata_t *player_d, int playerid ) {
+void tellplayerentersimmode( struct playerdata_t *player_d, FILE *simfile ) {
+	char inoutfiles[ BUFFER_SIZE ];
+	uint8_t commandbuffer[ BUFFER_SIZE ];
+
+	if ( fscanf( simfile, ":%s", inoutfiles ) != 1 ) {
+		printf( " Error in simfile ADD_PLAYER format\n" );
+		exit( EXIT_FAILURE );
+	}
+	//Notfiy player to enter simulation mode
+	//Need to pass in the player sim file location.
+	if ( -1 == write( player_d->output[WRITEPIPE], commandbuffer, create_runplayersim_packet( commandbuffer, inoutfiles ) ) ) {
+		perror( "Error trying to write to game input pipe to enter sim mode\n" );
+		exit ( EXIT_FAILURE );
+	}
+}
+
+void create_player(const struct gamedata_t gamedata, struct playerdata_t *player_d, int playerid, FILE *simfile ) {
 	pthread_attr_t attribute;
 	int playerp[2];
 	int32_t rc;
@@ -109,28 +125,15 @@ void create_player(const struct gamedata_t gamedata, struct playerdata_t *player
 		exit( EXIT_FAILURE );
 	}
 
+	//notify player to enter sim mode
+	tellplayerentersimmode( player_d, simfile );
+	
 	//notify game about new player
 	if ( -1 == write( gamedata.input[WRITEPIPE], commandbuffer, create_add_player_packet( commandbuffer, player_d ) ) ) {
 		perror( "Error trying to write to server input pipe to add a new player\n" );
 		exit ( EXIT_FAILURE );
 	}
 
-}
-
-void tellplayerentersimmode( struct playerdata_t *player_d, FILE *simfile ) {
-	char inoutfiles[ BUFFER_SIZE ];
-	uint8_t commandbuffer[ BUFFER_SIZE ];
-
-	if ( fscanf( simfile, ":%s", inoutfiles ) != 1 ) {
-		printf( " Error in simfile ADD_PLAYER format\n" );
-		exit( EXIT_FAILURE );
-	}
-	//Notfiy player to enter simulation mode
-	//Need to pass in the player sim file location.
-	if ( -1 == write( player_d->output[WRITEPIPE], commandbuffer, create_runplayersim_packet( commandbuffer, inoutfiles ) ) ) {
-		perror( "Error trying to write to game input pipe to enter sim mode\n" );
-		exit ( EXIT_FAILURE );
-	}
 }
 
 int findgame (int gamenum, struct gamedata_t games[], int maxgames )
@@ -212,8 +215,7 @@ int main(int argc, char *argv[])
 				printf( " Error in simfile ADD_PLAYER format\n" );
 				exit( EXIT_FAILURE );
 			}
-			create_player( game_data[findgame( gamenum, game_data, max_test_games )], &player_data[num_players], num_players );
-			tellplayerentersimmode( &player_data[num_players], simfile );
+			create_player( game_data[findgame( gamenum, game_data, max_test_games )], &player_data[num_players], num_players, simfile );
 			num_players++;
 			break;
 

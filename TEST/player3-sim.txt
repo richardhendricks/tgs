@@ -1,10 +1,1 @@
-//Player sim files
-//Commands:
-//
-// 0   Quit
-// 1   Status
-// 2   Join the game
-// 3   Watch the game
-// 4:y:z Send command y with data z
-// 5:x Delay X seconds before sending next command
-0
+1

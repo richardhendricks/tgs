@@ -32,6 +32,56 @@ int create_add_player_packet( uint8_t *commandbuffer, struct playerdata_t *playe
 	return (sizeof(struct command_packet) + sizeof(struct playerdata_t ) );
 }
 
+
+
+int create_quit_game_packet( uint8_t *commandbuffer )
+{
+	struct player_command_packet header;
+
+	header.command = quit_game;
+	header.datasize = 0;
+	memcpy( (void*) commandbuffer, (void*) &header, sizeof( struct player_command_packet ) );
+
+	return sizeof(struct player_command_packet);
+}
+
+int create_gamecommand_packet( uint8_t *commandbuffer, char* s )
+{
+	struct player_command_packet header;
+
+	header.command = gamecommand;
+	header.datasize = strlen( s ) + 1; //Add one for \0
+	memcpy( (void*) commandbuffer, (void*) &header, sizeof( struct player_command_packet ) );
+	memcpy( (void*) &commandbuffer[sizeof (struct player_command_packet) ], (void *) s, header.datasize );
+
+	return (sizeof(struct player_results_packet) + header.datasize );
+}
+
+
+int create_result_packet( uint8_t *commandbuffer, char* s )
+{
+	struct player_results_packet header;
+
+	header.result = result;
+	header.datasize = strlen( s ) + 1; //Add one for \0
+	memcpy( (void*) commandbuffer, (void*) &header, sizeof( struct player_results_packet ) );
+	memcpy( (void*) &commandbuffer[sizeof (struct player_results_packet) ], (void *) s, header.datasize );
+
+	return (sizeof(struct player_results_packet) + header.datasize );
+}
+
+int create_request_packet( uint8_t *commandbuffer, char* s )
+{
+	struct player_results_packet header;
+
+	header.result = request;
+	header.datasize = strlen( s ) + 1; //Add one for \0
+	memcpy( (void*) commandbuffer, (void*) &header, sizeof( struct player_results_packet ) );
+	memcpy( (void*) &commandbuffer[sizeof (struct player_results_packet) ], (void *) s, header.datasize );
+
+	return (sizeof(struct player_results_packet) + header.datasize );
+}
+
 int create_runplayersim_packet( uint8_t *commandbuffer, char* simfilename )
 {
 	struct player_results_packet header;
