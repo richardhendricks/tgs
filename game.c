@@ -5,6 +5,50 @@
 //
 //
 
+process_game_command( mygamedata, myplayers, player, gamecommandbuffer )
+{
+	int i;
+	bool allturnsin=true;
+
+	//Switch based on this player's current state
+	//
+	switch( myplayers[player].state.status )
+	{
+		case init:
+			break;
+
+		case joining:
+			break;
+
+		case waiting:
+			break;
+
+		case watching:
+			break;
+		
+		case turncomplete:
+			break;
+
+		case gameover:
+			break;
+	}
+
+
+	//Have turns been received?
+	//For games with alternating turns (tic tac toe), make sure correct
+	//player is ready.
+	for( i = 0; i < mygamedata->numplayers; i++ ) {
+
+	}
+
+	//Update the game state
+	//
+	
+	//Send out result packets and request packets
+	//CC result packets to watchers
+	
+}
+
 int send_intro( struct gamedata_t *mygamedata, struct playerdata_t *myplayers, int player )
 {
 	uint8_t commandbuffer[ COMMAND_SIZE ];

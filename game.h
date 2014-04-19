@@ -36,12 +36,18 @@
 
 #define SRV_CMD (1UL << 63)
 
+struct gamestate_t {
+	int status;
+	int turn_num;
+}
+
 struct gamedata_t {
 	int gamenumber;
 	int input[2]; 	// pipe file descriptor for data to game thread
 	int output[2];	// pipe file descriptor for data from game thread
 	int epfd; 		// file descriptor used for epoll
 	int numplayers;
+	struct gamestate_t state;
 	pthread_mutex_t mutex;
 };
 

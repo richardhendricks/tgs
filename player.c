@@ -92,6 +92,7 @@ int process_game_result( struct playerdata_t *myplayer )
 			//Not implemented yet
 			return false;
 			break;
+
 		case terminate: //Terminate this player thread
 			printf( "Stopping player %d\n", myplayer->playerid );
 			if( true == myplayer->simmode ) {
